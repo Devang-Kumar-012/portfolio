@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useMemo, ReactNode } from "react";
 import type { Locale } from "@/lib/i18n";
 import { parseMarkdown } from "@/lib/markdown";
 import { deepMerge } from "@/lib/utils";
@@ -13,13 +13,37 @@ interface LanguageContextType {
     dict: DictionaryType;
     content: ContentType;
 }
-
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
-
 interface LanguageProviderProps {
-    children: React.ReactNode;
+    children: ReactNode;
     lang: Locale;
     dict: DictionaryType;
     contents: ContentLanguageType;
     shared: SharedDataType;
+}
+
+export function LanguageProvider({ children, lang, dict, contents, shared }: LanguageProviderProps) {
+    const parsedDict = useMemo(() => parseMarkdown(dict), [dict]);
+    const content = useMemo(
+        () =>
+            parseMarkdown(
+                deepMerge(
+                    shared as unknown as Record<string, unknown>,
+                    contents as unknown as Record<string, unknown>
+                )
+            ) as unknown as ContentType,
+        [contents, shared]
+    );
+    return (
+        <LanguageContext.Provider value={{ language: lang, dict: parsedDict, content }}>
+            {children}
+        </LanguageContext.Provider>
+    );
+}
+export function useLanguage() {
+    const context = useContext(LanguageContext);
+    if (!context) {
+        throw new Error("useLanguage must be used within a LanguageProvider");
+    }
+    return context;
 }
